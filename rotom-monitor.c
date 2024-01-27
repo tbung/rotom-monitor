@@ -2,6 +2,7 @@
 #include <mosquitto.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <time.h>
 
 char timestamp_buf[256] = {0};
@@ -33,12 +34,11 @@ void on_message(struct mosquitto *mosq, void *obj,
   LOG_INFO("Received message on \"%s\": %s", msg->topic,(char *)msg->payload);
   cJSON *json = cJSON_Parse(msg->payload);
   cJSON *temperature = cJSON_GetObjectItemCaseSensitive(json, "temperature");
-  if (cJSON_IsNumber(temperature)) {
-    printf("Temperature = %.2f°C\n", temperature->valuedouble);
-  }
   cJSON *humidity = cJSON_GetObjectItemCaseSensitive(json, "humidity");
-  if (cJSON_IsNumber(humidity)) {
-    printf("Humidity = %.2f%%\n", humidity->valuedouble);
+  if (cJSON_IsNumber(temperature) && cJSON_IsNumber(humidity)) {
+    fprintf(obj, "%s,%.2f,%.2f\n", get_timestamp(), temperature->valuedouble,
+            humidity->valuedouble);
+    fflush(obj);
   }
   cJSON_Delete(json);
 }
@@ -54,9 +54,21 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // TODO: Make output file configurable, maybe use XDG
+  struct stat st = {0};
+  if (stat("./data", &st) == -1) {
+    mkdir("./data", 0700);
+  }
+  FILE *fp = fopen("./data/rotom-monitor.csv", "a");
+  stat("./data/rotom-monitor.csv", &st);
+  if (st.st_size == 0) {
+    fprintf(fp, "timestamp,temperature,humidity\n");
+    fflush(fp);
+  }
+
   mosquitto_lib_init();
 
-  struct mosquitto *client = mosquitto_new(NULL, true, NULL);
+  struct mosquitto *client = mosquitto_new(NULL, true, fp);
 
   // set up auth and client options
   mosquitto_username_pw_set(client, username, password);
@@ -74,5 +86,6 @@ int main(int argc, char *argv[]) {
   mosquitto_loop_forever(client, -1, 1);
 
   mosquitto_lib_cleanup();
+  fclose(fp);
   return 0;
 }
