@@ -21,6 +21,7 @@ char *get_timestamp() {
 
 void on_connect(struct mosquitto *mosq, void *obj, int rc) {
   LOG_INFO("Connected to MQTT broker");
+  mosquitto_subscribe(mosq, NULL, "rotom-heat/climate", 0);
 }
 
 void on_disconnect(struct mosquitto *mosq, void *obj, int rc) {
@@ -29,7 +30,7 @@ void on_disconnect(struct mosquitto *mosq, void *obj, int rc) {
 
 void on_message(struct mosquitto *mosq, void *obj,
                 const struct mosquitto_message *msg) {
-  LOG_INFO("Received message: %s", (char *)msg->payload);
+  LOG_INFO("Received message on \"%s\": %s", msg->topic,(char *)msg->payload);
   cJSON *json = cJSON_Parse(msg->payload);
   cJSON *temperature = cJSON_GetObjectItemCaseSensitive(json, "temperature");
   if (cJSON_IsNumber(temperature)) {
@@ -68,8 +69,8 @@ int main(int argc, char *argv[]) {
   // connect to broker
   LOG_INFO("Trying to connected to MQTT broker at %s", address);
   mosquitto_connect(client, address, 1883, 60);
-  mosquitto_subscribe(client, NULL, "rotom-heat/climate", 0);
 
+  // already handles reconnection internally
   mosquitto_loop_forever(client, -1, 1);
 
   mosquitto_lib_cleanup();
