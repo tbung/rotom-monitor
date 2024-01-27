@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <cjson/cJSON.h>
 #include <mosquitto.h>
 #include <stdio.h>
@@ -17,8 +19,12 @@ char *get_timestamp() {
   return timestamp_buf;
 }
 
-#define LOG_INFO(fmt, ...)                                                     \
-  printf("%s INFO: " fmt "\n", get_timestamp(), ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) printf("INFO: " fmt "\n", ##__VA_ARGS__)
+#ifdef DEBUG
+#define LOG_DEBUG(fmt, ...) printf("DEBUG: " fmt "\n", ##__VA_ARGS__)
+#else
+#define LOG_DEBUG(fmt, ...)
+#endif
 
 void on_connect(struct mosquitto *mosq, void *obj, int rc) {
   LOG_INFO("Connected to MQTT broker");
@@ -31,7 +37,7 @@ void on_disconnect(struct mosquitto *mosq, void *obj, int rc) {
 
 void on_message(struct mosquitto *mosq, void *obj,
                 const struct mosquitto_message *msg) {
-  LOG_INFO("Received message on \"%s\": %s", msg->topic,(char *)msg->payload);
+  LOG_DEBUG("Received message on \"%s\": %s", msg->topic, (char *)msg->payload);
   cJSON *json = cJSON_Parse(msg->payload);
   cJSON *temperature = cJSON_GetObjectItemCaseSensitive(json, "temperature");
   cJSON *humidity = cJSON_GetObjectItemCaseSensitive(json, "humidity");
