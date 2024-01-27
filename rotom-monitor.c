@@ -20,9 +20,9 @@ char *get_timestamp() {
   return timestamp_buf;
 }
 
-#define LOG_INFO(fmt, ...) printf("INFO: " fmt "\n", ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) fprintf(stderr, "INFO: " fmt "\n", ##__VA_ARGS__)
 #ifdef DEBUG
-#define LOG_DEBUG(fmt, ...) printf("DEBUG: " fmt "\n", ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) fprintf(stderr, "DEBUG: " fmt "\n", ##__VA_ARGS__)
 #else
 #define LOG_DEBUG(fmt, ...)
 #endif
