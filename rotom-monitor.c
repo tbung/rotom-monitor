@@ -4,6 +4,7 @@
 #include <mosquitto.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 
@@ -50,23 +51,34 @@ void on_message(struct mosquitto *mosq, void *obj,
 }
 
 int main(int argc, char *argv[]) {
-  int c;
   char *username = getenv("ROTOM_MONITOR_USERNAME");
   char *password = getenv("ROTOM_MONITOR_PASSWORD");
   char *address = getenv("ROTOM_MONITOR_HOST");
+  char *out_path = getenv("ROTOM_MONITOR_DATA");
 
-  if (username == NULL || password == NULL || address == NULL) {
+  if (username == NULL || password == NULL || address == NULL ||
+      out_path == NULL) {
     printf("Missing required environment variables\n");
     return 1;
   }
 
   // TODO: Make output file configurable, maybe use XDG
-  struct stat st = {0};
-  if (stat("./data", &st) == -1) {
-    mkdir("./data", 0700);
+  char file_path[strlen("rotom-monitor.csv") + strlen(out_path) + 1];
+  if (out_path[strlen(out_path) - 1] == '/') {
+    out_path[strlen(out_path) - 1] = '\0';
   }
-  FILE *fp = fopen("./data/rotom-monitor.csv", "a");
-  stat("./data/rotom-monitor.csv", &st);
+  snprintf(file_path, sizeof(file_path), "%s/rotom-monitor.csv", out_path);
+  LOG_INFO("Writing data to %s", file_path);
+
+  struct stat st = {0};
+  if (stat(out_path, &st) == -1) {
+    if (mkdir(out_path, 0700) == -1) {
+      perror("mkdir");
+      exit(EXIT_FAILURE);
+    }
+  }
+  FILE *fp = fopen(file_path, "a");
+  stat(file_path, &st);
   if (st.st_size == 0) {
     fprintf(fp, "timestamp,temperature,humidity\n");
     fflush(fp);
